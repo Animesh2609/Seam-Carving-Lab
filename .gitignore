@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+# Environment and secrets
+.env
+.streamlit/secrets.toml
+# OS and editor
+.DS_Store
+.vscode/
+# Large cached models and artifacts
+.cache/
+models/
+outputs/
