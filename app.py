@@ -1,11 +1,35 @@
 """Streamlit View: all image-processing logic is delegated to the controller."""
 import io
 import os
+import math
 import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw
-from seamcarving import (ResizeParameters, ImageDocument, SeamCarvingController,
-                         ImageExporter, ImageResizer)
+
+from seamcarving import (
+    ResizeParameters,
+    ImageDocument,
+    SeamCarvingController,
+    ImageExporter,
+    ImageResizer
+)
+
+def prepare_image(image, max_pixels=360_000):
+    width, height = image.size
+    total_pixels = width * height
+
+    if total_pixels > max_pixels:
+        scale = math.sqrt(max_pixels / total_pixels)
+
+        new_width = max(1, int(width * scale))
+        new_height = max(1, int(height * scale))
+
+        image = image.resize(
+            (new_width, new_height),
+            Image.Resampling.LANCZOS
+        )
+
+    return image
 
 st.set_page_config(page_title='Seam Carving Lab', page_icon='🖼️', layout='wide')
 # Public hosting has shared CPU/RAM. Limit expensive operations per request.
@@ -28,16 +52,29 @@ if uploaded is None:
 
 try:
     image = Image.open(uploaded).convert('RGB')
+
+    original_width, original_height = image.size
+
+    # Automatically resize oversized uploads
+    image = prepare_image(image, MAX_PIXELS)
+
+    # Convert the processed image to a NumPy array
     original = np.asarray(image)
+
 except Exception as exc:
     st.error(f'Unable to read the uploaded image: {exc}')
     st.stop()
 
 h, w = original.shape[:2]
-if h * w > MAX_PIXELS:
-    st.error(f'This public demo accepts at most {MAX_PIXELS:,} pixels per image. '
-             f'Your image is {w} × {h} = {w*h:,} pixels. Resize it before uploading.')
-    st.stop()
+
+# Inform the user if automatic downscaling occurred
+if (w, h) != (original_width, original_height):
+    st.info(
+        f"Your uploaded image was {original_width} × {original_height} pixels. "
+        f"It has been automatically resized to {w} × {h} pixels "
+        "for faster processing on the public server."
+    )
+
 document = ImageDocument(original)
 with st.sidebar:
     st.header('2 · Resize settings')
