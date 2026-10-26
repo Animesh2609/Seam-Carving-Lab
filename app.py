@@ -1,3 +1,37 @@
+import streamlit as st
+from auth_ui import nav, landing, auth_page
+st.set_page_config(page_title='Seam Carving Lab',page_icon='✂️',layout='wide')
+st.markdown("""<style>
+.block-container{max-width:1200px;padding-top:1.5rem}
+.hero{background:linear-gradient(125deg,#1c3046,#236478);color:white;border-radius:22px;padding:3.5rem 2.5rem;margin:1rem 0 2rem}
+.hero h1{font-size:clamp(2.2rem,5vw,4rem);line-height:1.12;margin:.5rem 0}
+.hero p{font-size:1.12rem;max-width:700px;color:#e0eaf0}
+.eyebrow{letter-spacing:.15em;font-size:.8rem;color:#bce6e2}
+</style>""",unsafe_allow_html=True)
+if 'page' not in st.session_state:
+    st.session_state['page']='home'
+if st.session_state['page']=='home':
+    landing()
+    st.stop()
+if st.session_state['page']=='auth':
+    auth_page()
+    st.stop()
+if not st.session_state.get('account'):
+    st.session_state['page']='auth'
+    st.rerun()
+    st.session_state['page']='home'
+if st.session_state['page']=='home':
+    landing()
+    st.stop()
+if st.session_state['page']=='auth':
+    auth_page()
+    st.stop()
+if not st.session_state.get('account'):
+    st.session_state['page']='auth'
+    st.rerun()
+nav()
+st.caption(f"Signed in as {st.session_state['account']['name']} · Animesh Singh (2026H1120144P)")
+st.title('Image-processing workbench')
 """Streamlit View: all image-processing logic is delegated to the controller."""
 import io
 import os
