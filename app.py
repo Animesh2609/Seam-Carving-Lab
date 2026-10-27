@@ -1,13 +1,19 @@
 import streamlit as st
-from auth_ui import nav, landing, auth_page
+from auth_ui import (nav, landing, auth_page, reset_page, profile_page,
+                     handle_auth_callback, ensure_session)
 st.set_page_config(page_title='Seam Carving Lab',page_icon='✂️',layout='wide')
 st.markdown("""<style>
-.block-container{max-width:1200px;padding-top:1.5rem}
+.block-container{max-width:1200px;padding-top:5.5rem;padding-bottom:3rem}
 .hero{background:linear-gradient(125deg,#1c3046,#236478);color:white;border-radius:22px;padding:3.5rem 2.5rem;margin:1rem 0 2rem}
 .hero h1{font-size:clamp(2.2rem,5vw,4rem);line-height:1.12;margin:.5rem 0}
 .hero p{font-size:1.12rem;max-width:700px;color:#e0eaf0}
 .eyebrow{letter-spacing:.15em;font-size:.8rem;color:#bce6e2}
 </style>""",unsafe_allow_html=True)
+# OAuth and recovery emails return to the app with a short-lived query code.
+# Handle these BEFORE showing any normal page, even after a fresh browser redirect.
+if handle_auth_callback():
+    st.stop()
+
 if 'page' not in st.session_state:
     st.session_state['page']='home'
 if st.session_state['page']=='home':
@@ -16,63 +22,38 @@ if st.session_state['page']=='home':
 if st.session_state['page']=='auth':
     auth_page()
     st.stop()
-if not st.session_state.get('account'):
-    st.session_state['page']='auth'
-    st.rerun()
-    st.session_state['page']='home'
-if st.session_state['page']=='home':
-    landing()
+if st.session_state['page'] == 'reset':
+    reset_page()
     st.stop()
-if st.session_state['page']=='auth':
-    auth_page()
+if st.session_state['page'] == 'profile':
+    if not ensure_session():
+        st.stop()
+    profile_page()
     st.stop()
-if not st.session_state.get('account'):
-    st.session_state['page']='auth'
-    st.rerun()
+if not ensure_session():
+    st.session_state['page'] = 'auth'
+    st.stop()
+# Remove password widget values when moving away from sign-in forms.
+for _key in ('login_pw', 'signup_pw', 'signup_confirm'):
+    st.session_state.pop(_key, None)
 nav()
-st.caption(f"Signed in as {st.session_state['account']['name']} · Animesh Singh (2026H1120144P)")
+st.caption(f"Signed in as {st.session_state['account']['name']}")
 st.title('Image-processing workbench')
-"""Streamlit View: all image-processing logic is delegated to the controller."""
 import io
 import os
-import math
 import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw
+from seamcarving import (ResizeParameters, ImageDocument, SeamCarvingController,
+                         ImageExporter, ImageResizer)
 
-from seamcarving import (
-    ResizeParameters,
-    ImageDocument,
-    SeamCarvingController,
-    ImageExporter,
-    ImageResizer
-)
 
-def prepare_image(image, max_pixels=360_000):
-    width, height = image.size
-    total_pixels = width * height
-
-    if total_pixels > max_pixels:
-        scale = math.sqrt(max_pixels / total_pixels)
-
-        new_width = max(1, int(width * scale))
-        new_height = max(1, int(height * scale))
-
-        image = image.resize(
-            (new_width, new_height),
-            Image.Resampling.LANCZOS
-        )
-
-    return image
-
-st.set_page_config(page_title='Seam Carving Lab', page_icon='🖼️', layout='wide')
 # Public hosting has shared CPU/RAM. Limit expensive operations per request.
 MAX_PIXELS = int(os.getenv('SEAM_MAX_PIXELS', '360000'))
 MAX_SEAM_OPERATIONS = int(os.getenv('SEAM_MAX_OPERATIONS', '350'))
 ENABLE_SEMANTIC = os.getenv('SEAM_ENABLE_SEMANTIC', '0') == '1'
 
-st.title('Seam Carving Lab')
-st.caption('An OOAD workbench for content-aware image resizing · Animesh Singh (2026H1120144P)')
+
 controller = SeamCarvingController()
 
 with st.sidebar:
@@ -86,29 +67,18 @@ if uploaded is None:
 
 try:
     image = Image.open(uploaded).convert('RGB')
-
-    original_width, original_height = image.size
-
-    # Automatically resize oversized uploads
-    image = prepare_image(image, MAX_PIXELS)
-
-    # Convert the processed image to a NumPy array
+    original_dimensions = image.size
+    if image.width * image.height > MAX_PIXELS:
+        import math
+        scale = math.sqrt(MAX_PIXELS / (image.width * image.height))
+        image = image.resize((max(1, int(image.width * scale)), max(1, int(image.height * scale))), Image.Resampling.LANCZOS)
+        st.info(f'Image downscaled from {original_dimensions[0]} × {original_dimensions[1]} to {image.width} × {image.height} for cloud processing.')
     original = np.asarray(image)
-
 except Exception as exc:
     st.error(f'Unable to read the uploaded image: {exc}')
     st.stop()
 
 h, w = original.shape[:2]
-
-# Inform the user if automatic downscaling occurred
-if (w, h) != (original_width, original_height):
-    st.info(
-        f"Your uploaded image was {original_width} × {original_height} pixels. "
-        f"It has been automatically resized to {w} × {h} pixels "
-        "for faster processing on the public server."
-    )
-
 document = ImageDocument(original)
 with st.sidebar:
     st.header('2 · Resize settings')

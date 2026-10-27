@@ -20,7 +20,10 @@ If PowerShell blocks activation, use `.venv\Scripts\python.exe -m pip install -r
 
 ## File structure
 
-- `app.py` — Streamlit View; upload, previews, mask controls, metrics, download.
+- `app.py` — Streamlit View; upload, previews, masks, metrics, and downloads.
+- `auth_ui.py` — public landing page, account forms, OAuth callback, password-reset and profile screens.
+- `auth_backend.py` — Supabase REST client, PKCE OAuth, refresh tokens and account updates.
+- `tests/test_auth_backend.py` — offline tests of email/password and OAuth flows (mocked server).
 - `seamcarving/core.py` — Model and services, independent of Streamlit.
 - `seamcarving/__init__.py` — public class exports.
 - `tests/test_core.py` — unit/integration tests.
@@ -56,7 +59,7 @@ If PowerShell blocks activation, use `.venv\Scripts\python.exe -m pip install -r
 
 ## Limitations (important for report/viva)
 
-1. This is a **working educational implementation**, not a complete reproduction of the 2007 paper. It does not implement semantic saliency, general object removal, or multi-size representations.
+1. This is an **educational implementation**, not a complete reproduction of the 2007 paper. It includes object removal, optional semantic segmentation as an importance proxy, and precomputed multi-size exports; it does not reproduce the paper's compact multi-size representation or model human-attention saliency directly.
 2. The forward-energy implementation uses RGB L1 transition costs; its displayed energy map is the **backward gradient map** for illustration, not a forward-energy cost map.
 3. Enlargement uses greedy repeated seam insertion, not the paper's optimized multi-seam insertion ordering. Results may show repeated artifacts.
 4. Protected regions receive a **high penalty**, not an absolute constraint. If every possible seam crosses the protected region, some protected pixels can still be removed.
@@ -105,3 +108,7 @@ To apply selected semantic classes to **normal resizing**, after selecting the c
 ## Public hosting
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step instructions for Streamlit Community Cloud, limits and optional semantic dependencies.
+
+
+## Landing page and accounts
+See `AUTH_SETUP.md` for mandatory Supabase setup for email/password sign-up and login, Google and GitHub OAuth, correct redirect URLs and the custom password-reset email template. All provider callbacks and password-update code are included, but live flows require your own enabled providers and real credentials. Local automated auth tests use mocked responses only.

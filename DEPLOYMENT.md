@@ -8,6 +8,7 @@
 4. Choose your repository, the `main` branch, and entrypoint **`app.py`**.
 5. Click Deploy. Wait for dependencies to install, then open the generated public `.streamlit.app` URL.
 6. Share that URL. The local `localhost:8501` address is not public.
+7. **Before asking users to register:** configure Supabase, Google/GitHub OAuth, and the password-reset email template by following `AUTH_SETUP.md`.
 
 ### Default public-hosting limits
 
@@ -25,10 +26,10 @@ The app uses 5 MB upload limit, maximum 360,000 image pixels and 350 seam operat
 
 ### Security and availability notes
 
-- This is a **public, unauthenticated demo**. Do not upload private or sensitive images. The host processes uploaded images and Streamlit session state may retain results while sessions are active.
+- The landing page is public, but the image-processing workbench requires a Supabase account. Do not upload private or sensitive images without considering your hosting service's data and logging policies. Streamlit session state can retain processing outputs while a session is active.
 - The app does not intentionally save uploaded images to a persistent database. Hosting-provider logs, platform retention, and caching policies are separate considerations.
 - Shared CPU/RAM resources and cold starts can affect response times. Free hosting may sleep when idle and does not guarantee continuous uptime.
-- For more control, use a paid VM/container with more memory, authentication and request limits.
+- For more control, use a paid VM/container with more memory and stronger security, persistence, and request limits.
 - The algorithm remains CPU-heavy because it processes seams iteratively. Test with small images.
 
 ## Run locally
