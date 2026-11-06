@@ -319,30 +319,19 @@ with st.expander('Object removal — guided by mask', expanded=False):
                'the image reaches its geometric minimum, or the cloud processing time budget is reached.')
     st.caption(f'Cloud safety budget: {OBJECT_TIME_BUDGET:.0f} seconds per attempt; adjustable by the site owner.')
     if st.button('Remove marked object', type='primary'):
-      if not remove_mask.any():
-       st.error('Select a non-empty object region.')
-      else:
-        try:
-          # Removal takes priority wherever masks overlap.
-          effective_protection = None
-          if protection is not None:
-            effective_protection = (
-              protection & ~remove_mask
-                )
-            with st.spinner('Removing marked object...'):
-              obj_result = ObjectRemovalService(method).remove(
-                original,
-                remove_mask,
-                effective_protection,
-                restore_size=restore,
-                max_seconds=OBJECT_TIME_BUDGET
-              )
-              st.session_state['object_result'] = (
-                uploaded.getvalue(),
-                obj_result
-              )
-        except Exception as exc:
-          st.error(f'Object removal failed: {exc}')
+        if not remove_mask.any():
+            st.error('Select a non-empty object region.')
+        elif protection is not None and np.any(remove_mask & protection):
+            st.error('Removal mask overlaps the protection rectangle. Adjust the regions.')
+        else:
+            try:
+                with st.spinner('Removing marked object...'):
+                    obj_result = ObjectRemovalService(method).remove(
+                        original, remove_mask, protection, restore_size=restore,
+                        max_seconds=OBJECT_TIME_BUDGET)
+                st.session_state['object_result'] = (uploaded.getvalue(), obj_result)
+            except Exception as exc:
+                st.error(f'Object removal failed: {exc}')
     saved_obj = st.session_state.get('object_result')
     if saved_obj and saved_obj[0] == uploaded.getvalue():
         obj_result = saved_obj[1]
