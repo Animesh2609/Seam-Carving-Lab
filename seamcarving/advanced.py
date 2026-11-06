@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import io
 import json
 import zipfile
+from time import perf_counter
 import numpy as np
 from PIL import Image
 from .core import (BackwardEnergy, ForwardEnergy, SeamEditor, SeamCarvingService,
@@ -22,6 +23,7 @@ class ObjectRemovalResult:
     removed_horizontal: int
     remaining_mask_pixels: int
     restored_size: bool
+    timed_out: bool = False
 
 
 class ObjectRemovalService:
@@ -42,7 +44,7 @@ class ObjectRemovalService:
         self.protection_strength = float(protection_strength)
 
     def remove(self, image, removal_mask, protection_mask=None, restore_size=True,
-               max_seams=None, progress=None):
+               max_seams=None, progress=None, max_seconds=None):
         image = np.asarray(image)
         if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8:
             raise ValueError('Expected RGB uint8 image')
@@ -61,9 +63,16 @@ class ObjectRemovalService:
         limit = int(max_seams) if max_seams is not None else w0 + h0 - 2
         if limit < 1:
             raise ValueError('max_seams must be positive')
+        if max_seconds is not None and max_seconds <= 0:
+            raise ValueError('max_seconds must be positive')
+        start = perf_counter()
+        timed_out = False
 
         for step in range(limit):
             if not removal.any():
+                break
+            if max_seconds is not None and perf_counter() - start >= max_seconds:
+                timed_out = True
                 break
             ys, xs = np.nonzero(removal)
             box_width = int(xs.max() - xs.min() + 1)
@@ -99,14 +108,18 @@ class ObjectRemovalService:
         remaining = int(removal.sum())
         if remaining:
             # Do not claim success when the marked region is still present.
-            return ObjectRemovalResult(output, vertical, horizontal, remaining, False)
+            return ObjectRemovalResult(output, vertical, horizontal, remaining, False, timed_out)
 
         if restore_size and (vertical or horizontal):
+            # Restoration is optional; avoid STARTING another expensive loop if
+            # the soft CPU budget has already expired.
+            if max_seconds is not None and perf_counter() - start >= max_seconds:
+                return ObjectRemovalResult(output, vertical, horizontal, 0, False, True)
             # Simple repeated insertion; retains original size but can create artifacts.
             service = SeamCarvingService(self.strategy)
             params = ResizeParameters(w0, h0)
             output = service.resize(output, params).image
-        return ObjectRemovalResult(output, vertical, horizontal, remaining, bool(restore_size))
+        return ObjectRemovalResult(output, vertical, horizontal, remaining, bool(restore_size), timed_out)
 
 
 class SemanticSaliencyService:
@@ -134,13 +147,20 @@ class SemanticSaliencyService:
         torch = self.torch
         pil = Image.fromarray(np.asarray(image, dtype=np.uint8))
         inputs = self.processor(images=pil, return_tensors='pt')
-        with torch.no_grad():
+        with torch.inference_mode():
             logits = self.model(**inputs).logits
-            logits = torch.nn.functional.interpolate(
-                logits, size=(pil.height, pil.width), mode='bilinear', align_corners=False)
+            # Do NOT upsample all 150 ADE20K channels to full image resolution.
+            # That creates huge tensors on shared Streamlit Cloud hosts. Instead,
+            # compute the segmentation at model resolution, then resize 2D maps.
             probabilities = torch.softmax(logits, dim=1)
             confidence, classes = probabilities.max(dim=1)
-        return classes[0].cpu().numpy().astype(np.int32), confidence[0].cpu().numpy().astype(np.float32)
+        low_classes = classes[0].cpu().numpy().astype(np.uint8)
+        low_confidence = confidence[0].cpu().numpy().astype(np.float32)
+        full_classes = np.asarray(Image.fromarray(low_classes).resize(
+            (pil.width, pil.height), Image.Resampling.NEAREST), dtype=np.int32)
+        full_confidence = np.asarray(Image.fromarray(low_confidence, mode='F').resize(
+            (pil.width, pil.height), Image.Resampling.BILINEAR), dtype=np.float32)
+        return full_classes, full_confidence
 
     def labels_present(self, class_map):
         return [(int(idx), self.labels.get(int(idx), f'class {idx}'))

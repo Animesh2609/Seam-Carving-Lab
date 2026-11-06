@@ -26,7 +26,7 @@ def setting(name):
 def auth_client():
     return SupabaseAuth(AuthConfig(
         url=setting("SUPABASE_URL"), key=setting("SUPABASE_ANON_KEY"),
-        app_url=setting("APP_URL").rstrip("/"), flow_secret=setting("AUTH_FLOW_SECRET")
+        app_url=setting("APP_URL").rstrip("/")
     ))
 
 
@@ -44,7 +44,7 @@ def clear_session():
     account = st.session_state.get("account")
     if account:
         auth_client().logout(account)
-    for key in ("account", "result", "object_result", "multi_result", "semantic", "semantic_selection", "reset_access_token"):
+    for key in ("account", "result", "object_result", "multi_result", "semantic", "semantic_selection", "reset_access_token", "recent_source", "recent_source_id"):
         st.session_state.pop(key, None)
     _clean_auth_params()
     st.session_state["page"] = "home"
@@ -52,17 +52,25 @@ def clear_session():
 
 
 def nav():
-    a, b = st.columns([5, 1.5], vertical_alignment="center")
-    with a:
-        st.markdown("### ✂️ Seam Carving Lab")
-    with b:
-        if st.session_state.get("account"):
-            if st.button("Sign out", key="nav_sign_out", use_container_width=True):
-                clear_session()
-        elif st.session_state.get("page") == "home":
-            if st.button("Sign in", key="nav_sign_in", type="primary", use_container_width=True):
-                st.session_state["page"] = "auth"
+    # Keep controls clear of Streamlit's toolbar and make the dashboard visible.
+    st.markdown('#### ✂️ Seam Carving Lab')
+    if st.session_state.get('account'):
+        a, b, c = st.columns([1, 1, 1])
+        with a:
+            if st.button('🏠 My dashboard', use_container_width=True, key='nav_dashboard'):
+                st.session_state['page'] = 'dashboard'
                 st.rerun()
+        with b:
+            if st.button('✂️ Workbench', use_container_width=True, key='nav_workbench'):
+                st.session_state['page'] = 'studio'
+                st.rerun()
+        with c:
+            if st.button('Sign out', use_container_width=True, key='nav_sign_out'):
+                clear_session()
+    elif st.session_state.get('page') == 'home':
+        if st.button('Sign in', key='nav_sign_in', type='primary'):
+            st.session_state['page'] = 'auth'
+            st.rerun()
 
 
 def landing():
@@ -97,7 +105,7 @@ def landing():
 
 def _enter_app(session):
     st.session_state["account"] = session
-    st.session_state["page"] = "studio" if session.get("phone") else "profile"
+    st.session_state["page"] = "dashboard"
     st.rerun()
 
 
@@ -161,22 +169,6 @@ def auth_page():
                     except AuthError as exc:
                         st.error(str(exc))
 
-    st.divider()
-    st.subheader("Or continue with")
-    if not setting("APP_URL") or not setting("AUTH_FLOW_SECRET") or not configured():
-        st.info("To activate Google/GitHub sign-in, set APP_URL and AUTH_FLOW_SECRET in Streamlit Secrets.")
-    left, right = st.columns(2)
-    for column, provider, label in ((left, "google", "Continue with Google"),
-                                    (right, "github", "Continue with GitHub")):
-        with column:
-            try:
-                url = auth_client().oauth_url(provider)
-                # Opens a new browser tab. Once the provider redirects back, the
-                # app exchanges the one-use PKCE code in that tab.
-                st.link_button(label, url, use_container_width=True)
-            except AuthError:
-                st.button(label, disabled=True, use_container_width=True, key=f"{provider}_unavailable")
-    st.caption("Google and GitHub accounts are verified through Supabase. The site owner must enable both providers in Supabase first. Streamlit accounts cannot be used as a third-party sign-in provider.")
     if st.button("← Back to home", key="back_to_home"):
         st.session_state["page"] = "home"
         st.rerun()
@@ -186,37 +178,11 @@ def handle_auth_callback() -> bool:
     """Returns True if an auth callback screen was rendered and app should stop."""
     action = st.query_params.get("auth_action", "")
     token_hash = st.query_params.get("token_hash", "")
-    flow = st.query_params.get("flow", "")
-    code = st.query_params.get("code", "")
-
-    if flow:
-        st.title("Complete social sign-in")
-        try:
-            details = auth_client().decode_oauth_flow(flow)
-        except AuthError as exc:
-            st.error(str(exc))
-            if st.button("Return to sign in", key="invalid_flow_back"):
-                _clean_auth_params()
-                st.session_state["page"] = "auth"
-                st.rerun()
-            return True
-        if st.query_params.get("error"):
-            st.error("The provider did not authorize login. Return to the sign-in page and try again.")
-        elif code:
-            st.write(f"You returned from **{details['provider'].title()}**. Finish sign-in to access your workbench.")
-            if st.button("Finish secure sign-in", type="primary"):
-                try:
-                    session = auth_client().finish_oauth(code, flow)
-                    _clean_auth_params()
-                    _enter_app(session)
-                except AuthError as exc:
-                    st.error(str(exc))
-        else:
-            st.warning("The provider did not return an authorization code. Try again.")
-        if st.button("Return to sign in", key="oauth_back"):
-            _clean_auth_params()
-            st.session_state["page"] = "auth"
-            st.rerun()
+    # Retired social-login links from older deployments are not processed.
+    if st.query_params.get("flow") or st.query_params.get("code"):
+        _clean_auth_params()
+        st.session_state["page"] = "auth"
+        st.rerun()
         return True
 
     if action in ("confirm", "reset"):
@@ -278,15 +244,15 @@ def reset_page():
 
 def profile_page():
     st.title("Complete your profile")
-    st.write("For social sign-in, add your name and phone number once before using the workbench.")
+    st.write("Review your name and phone number.")
     account = st.session_state.get("account")
     if not account:
         st.session_state["page"] = "auth"
         st.rerun()
-    with st.form("oauth_profile"):
+    with st.form("update_profile_form"):
         name = st.text_input("Full name", value=account.get("name", ""))
         phone = st.text_input("Phone number", value=account.get("phone", ""))
-        submitted = st.form_submit_button("Save profile and open studio", type="primary")
+        submitted = st.form_submit_button("Save profile", type="primary")
     if submitted:
         if not name.strip() or not PHONE_RE.fullmatch(phone.strip()):
             st.error("Enter your full name and valid phone number.")

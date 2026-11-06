@@ -1,0 +1,40 @@
+Executed with: python -m unittest discover -s tests -v
+test_multi_size_zip (test_advanced.AdvancedTests.test_multi_size_zip) ... ok
+test_object_removal_and_restore (test_advanced.AdvancedTests.test_object_removal_and_restore) ... ok
+test_object_removal_without_restore (test_advanced.AdvancedTests.test_object_removal_without_restore) ... ok
+test_overlapping_masks_rejected (test_advanced.AdvancedTests.test_overlapping_masks_rejected) ... ok
+test_semantic_mask_selection (test_advanced.AdvancedTests.test_semantic_mask_selection) ... ok
+test_email_confirmation (test_auth_backend.EmailAuthTests.test_email_confirmation) ... ok
+test_email_password_login (test_auth_backend.EmailAuthTests.test_email_password_login) ... ok
+test_invalid_configuration (test_auth_backend.EmailAuthTests.test_invalid_configuration) ... ok
+test_oauth_code_paths_are_not_exposed (test_auth_backend.EmailAuthTests.test_oauth_code_paths_are_not_exposed) ... ok
+test_password_recovery_and_update (test_auth_backend.EmailAuthTests.test_password_recovery_and_update) ... ok
+test_refresh_session (test_auth_backend.EmailAuthTests.test_refresh_session) ... ok
+test_reject_invalid_reset_purpose_and_short_password (test_auth_backend.EmailAuthTests.test_reject_invalid_reset_purpose_and_short_password) ... ok
+test_signup_records_metadata_and_redirect (test_auth_backend.EmailAuthTests.test_signup_records_metadata_and_redirect) ... ok
+test_update_profile (test_auth_backend.EmailAuthTests.test_update_profile) ... ok
+test_conventional_resize (test_core.SeamTests.test_conventional_resize) ... ok
+test_enlarge (test_core.SeamTests.test_enlarge) ... ok
+test_forward_and_protection (test_core.SeamTests.test_forward_and_protection) ... ok
+test_invalid_targets (test_core.SeamTests.test_invalid_targets) ... ok
+test_png_export (test_core.SeamTests.test_png_export) ... ok
+test_reduce_both_axes (test_core.SeamTests.test_reduce_both_axes) ... ok
+test_seam_is_connected (test_core.SeamTests.test_seam_is_connected) ... ok
+test_vertical_remove_and_insert (test_core.SeamTests.test_vertical_remove_and_insert) ... ok
+test_list_filter_and_privacy (test_image_history.HistoryTests.test_list_filter_and_privacy) ... ok
+test_rejects_invalid_operation_and_oversize (test_image_history.HistoryTests.test_rejects_invalid_operation_and_oversize) ... ok
+test_saves_paired_files_with_user_jwt (test_image_history.HistoryTests.test_saves_paired_files_with_user_jwt) ... ok
+test_unbounded_object_removal_replaced_by_time_budget (test_image_history.HistoryTests.test_unbounded_object_removal_replaced_by_time_budget) ... ok
+test_empty_or_corrupt_rejected (test_semantic_masks.SemanticMaskTests.test_empty_or_corrupt_rejected) ... ok
+test_nearest_resizing (test_semantic_masks.SemanticMaskTests.test_nearest_resizing) ... ok
+test_reject_invalid_target (test_semantic_masks.SemanticMaskTests.test_reject_invalid_target) ... ok
+test_white_selects_pixels (test_semantic_masks.SemanticMaskTests.test_white_selects_pixels) ... ok
+test_dashboard_and_image_saving_available (test_simplified_interface.InterfaceContractTests.test_dashboard_and_image_saving_available) ... ok
+test_no_social_login_buttons_or_oauth_client (test_simplified_interface.InterfaceContractTests.test_no_social_login_buttons_or_oauth_client) ... ok
+
+----------------------------------------------------------------------
+Ran 32 tests in 0.110s
+
+OK
+
+Note: These are offline/local tests; they do not certify real Supabase connectivity, cloud UI, or SegFormer inference.

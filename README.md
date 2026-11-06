@@ -1,114 +1,59 @@
-# Seam Carving Lab — OOAD implementation
+# Seam Carving Lab — Email login + Private Dashboard (November 2026)
 
-Research foundation: Shai Avidan and Ariel Shamir, **Seam Carving for Content-Aware Image Resizing**, ACM Transactions on Graphics 26(3), 2007, Article 10, https://doi.org/10.1145/1276377.1276390.
+An OOAD-focused content-aware image resizing application (Python + NumPy + Pillow + Streamlit + Supabase).
 
-Forward-energy extension: Michael Rubinstein, Ariel Shamir, Shai Avidan, **Improved Seam Carving for Video Retargeting**, ACM Transactions on Graphics 27(3), 2008.
+**No Google or GitHub login buttons.** Authentication is email/password only. Existing Supabase email/password users continue to use their accounts.
 
-## Install on Windows
+## Run locally
 
-Requires Python 3.10 or newer. From this folder:
+1. Extract the ZIP and open `SeamCarvingLab_Complete` in VS Code.
+2. In PowerShell:
+   ```powershell
+   py -m venv .venv
+   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+   .\.venv\Scripts\python.exe -m unittest discover -s tests -v
+   .\.venv\Scripts\python.exe -m streamlit run app.py
+   ```
+3. In Streamlit Cloud secrets (or `.streamlit/secrets.toml` locally), supply Supabase settings as explained in `START_HERE.md`.
 
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v
-streamlit run app.py
-```
+## Included features
 
-If PowerShell blocks activation, use `.venv\Scripts\python.exe -m pip install -r requirements.txt` and `.venv\Scripts\python.exe -m streamlit run app.py`.
+- Public landing page with project details and developer contact information
+- Supabase email/password signup, email confirmation, login, password reset, logout
+- Dashboard showing account details, editable name/phone, current in-session image preview, and saved image history
+- Save before/after images to a private Supabase bucket, inspect, download, delete
+- Seam carving: backward and forward energy, vertical/horizontal reduction, basic seam insertion
+- Energy map, seam overlay, optional rectangular protection mask
+- Object removal without an arbitrary 350-seam cap, with a configurable *soft CPU time budget*
+- Manual black/white mask PNG upload for protection or removal (no neural network needed)
+- Optional pretrained SegFormer scene segmentation for category-based masks (requires extra packages and host memory)
+- Multi-size ZIP output; uploads automatically downscaled when too large for responsive cloud processing
+- unittest suite for algorithms, auth REST contract, mask helpers and storage requests
 
-## File structure
+## Files
 
-- `app.py` — Streamlit View; upload, previews, masks, metrics, and downloads.
-- `auth_ui.py` — public landing page, account forms, OAuth callback, password-reset and profile screens.
-- `auth_backend.py` — Supabase REST client, PKCE OAuth, refresh tokens and account updates.
-- `tests/test_auth_backend.py` — offline tests of email/password and OAuth flows (mocked server).
-- `seamcarving/core.py` — Model and services, independent of Streamlit.
-- `seamcarving/__init__.py` — public class exports.
-- `tests/test_core.py` — unit/integration tests.
-- `requirements.txt` — dependencies.
-
-## Features and traceability
-
-| Feature | Implemented by |
+| Name | Purpose |
 |---|---|
-| JPEG/PNG upload, RGB decoding | Pillow in `app.py` |
-| Gradient energy | `BackwardEnergy.energy` |
-| Dynamic programming/backtracking | `SeamFinder.backward` |
-| Forward-energy transition costs | `ForwardEnergy.find_seam` |
-| Vertical seam remove/insert | `SeamEditor` |
-| Horizontal resizing | transposition in `SeamCarvingService` |
-| Energy map and seam overlay | `SeamCarvingController.preview` |
-| Protected rectangle | boolean mask with seam penalty, updated during resize |
-| Standard resizing comparison | `ImageResizer` using Pillow LANCZOS |
-| Runtime and seam counts | `ProcessingResult` |
-| PNG export | `ImageExporter` |
-| OOAD patterns | Strategy, MVC-style separation, Facade/service, GRASP principles |
+| `app.py` | Streamlit workbench and mask/removal workflows |
+| `auth_ui.py` | Landing page, email signup/login, confirmation/reset forms and navigation |
+| `auth_backend.py` | Email/password Supabase REST client (OAuth removed) |
+| `dashboard_ui.py` | Dashboard, profile editor, saved before/after image previews |
+| `image_history.py` | Private Supabase Storage/PostgREST operations using user JWT |
+| `seamcarving/core.py` | Energy strategy, seam finding/removing, resizing engine |
+| `seamcarving/advanced.py` | Object removal, SegFormer integration, multi-size output |
+| `semantic_masks.py` | Manual PNG mask conversion with nearest-neighbor resampling |
+| `supabase_history_setup.sql` | User-private database and storage access policies |
+| `requirements-semantic.txt` | Optional pretrained-model packages for local machine |
 
-## Design notes
+## Limitations and academic accuracy
 
-- `ImageDocument` owns original/result arrays. Original is never modified.
-- `ResizeParameters` stores target dimensions and chosen energy strategy.
-- `SeamCarvingController` receives UI requests and selects an energy strategy.
-- `EnergyStrategy` is an abstract class; `BackwardEnergy` and `ForwardEnergy` are concrete strategies.
-- `SeamFinder` uses dynamic programming and backtracking.
-- `SeamEditor` owns seam insertion/removal/overlay.
-- `SeamCarvingService` is a facade coordinating seam operations.
-- `ImageExporter` saves PNG; `ImageResizer` provides a conventional comparison.
+- The public app limits *working-image pixel count* through automatic downscaling. Pillow preprocessing is not seam carving.
+- There is no fixed 350-seam cap on **object removal**, but a time budget and image geometry bound remain. Some outputs may be partial and are explicitly labelled.
+- Object removal by seam carving can produce visible distortions; it does not reconstruct hidden background pixels.
+- Pretrained SegFormer predicts ADE20K semantic categories; these are not equivalent to a learned attention-based saliency model.
+- An uploaded binary mask is user-supplied and must not be described as an AI segmentation result.
+- Multi-size ZIP files contain independently produced images, not a compact multi-size representation from the original 2007 paper.
+- Dashboard only permanently retains files after the user explicitly clicks Save. The current image preview in the dashboard is temporary and cleared on logout.
+- Real Supabase email delivery, RLS policies, deployment and SegFormer inference were **not** verified against the live service by local tests. Validate them after deployment.
 
-## Limitations (important for report/viva)
-
-1. This is an **educational implementation**, not a complete reproduction of the 2007 paper. It includes object removal, optional semantic segmentation as an importance proxy, and precomputed multi-size exports; it does not reproduce the paper's compact multi-size representation or model human-attention saliency directly.
-2. The forward-energy implementation uses RGB L1 transition costs; its displayed energy map is the **backward gradient map** for illustration, not a forward-energy cost map.
-3. Enlargement uses greedy repeated seam insertion, not the paper's optimized multi-seam insertion ordering. Results may show repeated artifacts.
-4. Protected regions receive a **high penalty**, not an absolute constraint. If every possible seam crosses the protected region, some protected pixels can still be removed.
-5. Python loops make large reductions slow. For demos start with ~200–500 px images and small changes.
-6. Width is adjusted before height, so results depend on operation order. The algorithm does not globally optimize across both directions.
-7. If Streamlit settings change after a run, rerun to update output. Protection rectangle changes should also be followed by a rerun.
-
-## Suggested demo
-
-1. Upload a landscape photograph around 400x300.
-2. Preview gradient energy and the first seam overlay.
-3. Reduce width to 350, height to 280 using backward energy.
-4. Compare against Pillow conventional resize; download result.
-5. Change to forward energy and rerun.
-6. Enable a protection rectangle around a prominent subject and compare.
-7. Demonstrate modest enlargement (e.g. 420x300), and explain the limitations.
-8. Run `python -m unittest discover -s tests -v` and capture the results for your report.
-
-## Advanced workflows (upgraded version)
-
-### Object removal
-In **Advanced workflows → Object removal**, select a rectangular region or use a semantic class mask. The algorithm applies a strong negative penalty to pixels marked for removal and repeatedly removes seams. If enabled, it inserts seams afterward to restore the input dimensions. This is guided content-aware removal, not generative inpainting; complex shapes and large objects can distort.
-
-### Semantic saliency / scene segmentation (optional)
-Install the additional packages:
-
-```powershell
-pip install -r requirements-semantic.txt
-```
-
-Open **Advanced workflows → Semantic saliency**, click **Load semantic model and analyse image**, then select detected scene categories. The model is `nvidia/segformer-b0-finetuned-ade-512-512` (ADE20K labels). It downloads pretrained weights the first time, requires internet for that download, and may consume substantial RAM. Results are semantic segmentation classes, not a human-attention saliency model; the chosen classes serve as a *semantic importance mask*. Low-confidence predictions can be excluded with the confidence slider. These masks can be used for object removal, or use the existing protection rectangle for resizing.
-
-### Multi-size variants
-Open **Advanced workflows → Multi-size image variants**, choose size percentages and download a ZIP of resized PNGs and a `manifest.json`. These are *independently precomputed sizes*, **not** the original paper's efficient multi-size seam-order data structure.
-
-### Algorithmic scope and caveats
-- The 2007 paper motivates seam carving, seam insertion, object removal, and multi-size images. Forward-energy seam selection is associated with Rubinstein et al. (2008).
-- Semantic segmentation is a modern optional extension, not part of the original 2007 implementation.
-- Semantic segmentation and object removal are not guaranteed to preserve every important object; inspect outputs and compare against conventional resizing.
-- For smooth performance start with 100–300 pixel demo images. Large object masks can require many sequential seam operations.
-- Do not claim the code reconstructs hidden content, provides pixel-perfect object removal, or implements the original compact multi-size image representation.
-
-To apply selected semantic classes to **normal resizing**, after selecting the classes, enable **Protect selected semantic classes** in the sidebar and run seam carving again. The semantic mask and manually selected protection rectangle are combined.
-
-
-## Public hosting
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step instructions for Streamlit Community Cloud, limits and optional semantic dependencies.
-
-
-## Landing page and accounts
-See `AUTH_SETUP.md` for mandatory Supabase setup for email/password sign-up and login, Google and GitHub OAuth, correct redirect URLs and the custom password-reset email template. All provider callbacks and password-update code are included, but live flows require your own enabled providers and real credentials. Local automated auth tests use mocked responses only.
+See `START_HERE.md`, `EMAIL_SETUP.md` and `DASHBOARD_SETUP.md` for full instructions.
