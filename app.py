@@ -321,10 +321,10 @@ with st.expander('Object removal — guided by mask', expanded=False):
     if st.button('Remove marked object', type='primary'):
       if not remove_mask.any():
        st.error('Select a non-empty object region.')
-     else:
-       try:
-            # Removal takes priority wherever masks overlap.
-            effective_protection = None
+      else:
+        try:
+          # Removal takes priority wherever masks overlap.
+          effective_protection = None
 
             if protection is not None:
                 effective_protection = (
