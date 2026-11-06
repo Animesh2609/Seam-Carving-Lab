@@ -51,26 +51,63 @@ def clear_session():
     st.rerun()
 
 
+
 def nav():
-    # Keep controls clear of Streamlit's toolbar and make the dashboard visible.
-    st.markdown('#### ✂️ Seam Carving Lab')
-    if st.session_state.get('account'):
-        a, b, c = st.columns([1, 1, 1])
-        with a:
-            if st.button('🏠 My dashboard', use_container_width=True, key='nav_dashboard'):
-                st.session_state['page'] = 'dashboard'
-                st.rerun()
-        with b:
-            if st.button('✂️ Workbench', use_container_width=True, key='nav_workbench'):
-                st.session_state['page'] = 'studio'
-                st.rerun()
-        with c:
-            if st.button('Sign out', use_container_width=True, key='nav_sign_out'):
+
+    # Top header: website name on left, account action on right
+    title_col, action_col = st.columns(
+        [5, 1.4],
+        vertical_alignment="center"
+    )
+
+    with title_col:
+        st.markdown("### ✂️ Seam Carving Lab")
+
+    with action_col:
+
+        if st.session_state.get("account"):
+
+            if st.button(
+                "Sign out",
+                key="nav_sign_out",
+                use_container_width=True
+            ):
                 clear_session()
-    elif st.session_state.get('page') == 'home':
-        if st.button('Sign in', key='nav_sign_in', type='primary'):
-            st.session_state['page'] = 'auth'
-            st.rerun()
+
+        elif st.session_state.get("page") == "home":
+
+            if st.button(
+                "Sign in",
+                key="nav_sign_in",
+                type="primary",
+                use_container_width=True
+            ):
+                st.session_state["page"] = "auth"
+                st.rerun()
+
+    # Navigation for signed-in users
+    if st.session_state.get("account"):
+
+        dashboard_col, workbench_col = st.columns(2)
+
+        with dashboard_col:
+            if st.button(
+                "🏠 My dashboard",
+                key="nav_dashboard",
+                use_container_width=True
+            ):
+                st.session_state["page"] = "dashboard"
+                st.rerun()
+
+        with workbench_col:
+            if st.button(
+                "✂️ Workbench",
+                key="nav_workbench",
+                use_container_width=True
+            ):
+                st.session_state["page"] = "studio"
+                st.rerun()
+
 
 
 def landing():
