@@ -318,8 +318,8 @@ with st.expander('Object removal — guided by mask', expanded=False):
     st.caption('No fixed seam-count cap: the algorithm stops when the marked mask is cleared, '
                'the image reaches its geometric minimum, or the cloud processing time budget is reached.')
     st.caption(f'Cloud safety budget: {OBJECT_TIME_BUDGET:.0f} seconds per attempt; adjustable by the site owner.')
-  if st.button('Remove marked object', type='primary'):
-     if not remove_mask.any():
+    if st.button('Remove marked object', type='primary'):
+      if not remove_mask.any():
        st.error('Select a non-empty object region.')
      else:
        try:
